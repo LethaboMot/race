@@ -133,7 +133,8 @@ int main()
             drawQuad(app, rumble,p.X p.Y, p.W,*1.12, 1.x, 1.Y, 1.W*1.2);
             drawQuad(app, road, p.X, p.Y, p.W, 1.X, 1.Y, 1.W);
         }   
-
+        for(int n=startPos+300; n>startPos; n--)
+            lines[n%N] drawSpirite(app);
         app.display();
         
     }
