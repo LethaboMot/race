@@ -11,9 +11,10 @@ struct Line
 {
     float x, y, z;
     float x, y, z;
-    float scale;
+    float scale, curve, spiritX, clip;
+    Spirit spirite;
 
-    Line() {x=y=z=0;}
+    Line() {curve=x=y=z=0;}
 
     void project(int camX, int camY, int camZ)
     {
@@ -21,6 +22,29 @@ struct Line
         X = (1 + scale*(x - camX)) * width/2;
         y = (1 - scale*(y - camY)) * height/2;
         W = scale * roadW * width/2;
+    }
+
+    void drawSprite(RenderWindow &app)
+    {
+        Spirite s = spirite;
+        int w = s.getTextureRect().width;
+        int h = s.getTextureRect().height;
+
+        float destX = X + scale * spiriteX * width/2;
+        float destY = Y + 4;
+        float destW = w * W / 266;
+        float destH = h * W / 266;
+
+        destX += destW * spriteX;
+        destY += destH * (-1);
+        float clipH = destY+destH-clip;
+        if (clip<0) clipH=0;
+
+        if (clipH>=destH) return;
+        s.setTectureRect(IntRect(0,0,w,h-h*clipH/destH));
+        s.setScale(destW/w,destX, destH/h);
+        s.setPosition(destX, destY);
+        app.draw(s);
     }
 };
 
@@ -31,7 +55,7 @@ void draw drawQuad ( RenderWindow &W, Color c, int x1, int y1, int w1, int x2, i
     shape.setPoint(0, Vector2f(x1-w1, y1));
     shape.setPoint(1, Vector2f(x2-w2, y2));
     shape.setPoint(2, Vector2f(x1+w2, y2));
-    shape.setPoints(3, Vector2f(x1+w1,y1));
+    shape.setPoint(3, Vector2f(x1+w1,y1));
     w.draw(shape);
 }
 int main()
@@ -39,20 +63,34 @@ int main()
     RenderWindow app(VideoMode(width, height),  "Outrun Racing!");
     app.setFrameRateLimit(60);
 
+    Texture bg;
+    bg.loadFromFile("bg.png");
+    bg.setRepeated(true);
+    Spirit sbackground(bg);
+
+    Texture t;
+    t.loadFromFile("tree.png");
+    Spirite sTree(t);
+
+
     std::vector<Line> lines;
     
     for(int i=0;i<1600;i++)
     {
         Line line;
         line.z = i*segL;
+        if (i>300 && i<700) line.curve=0.5;
+        if (i>750) line.y = sin(i/30.0)*1500;
+        if (i%20==0) { line.spriteX=-2.5; line.sprite=sTree;}
 
         lines.push_back(line);
     }
 
     int N = lines.size();
     int pos = 0;
+    int playerX = 0;
 
-    while (app.isOpen)
+    while (app.isOpen())
     {
         Event e;
         while (app.pollEvent(e))
@@ -60,18 +98,30 @@ int main()
             if (e.type == Event::Closed)
             app.Close();
         }
+        if(Keyboard::isKeyPressed(Keyboard::Right)) playerX+=200;
+        if (Keyboard::isKeyPressed(Keyboard::Left)) playerX-=200;
+        if (Keyboard::isKeyPressed(Keyboard::Up)) pos+=200;
+        if (Keyboard::isKeyPressed(Keyboard::Down)) pos-=200;
+        
+        while (pos >= N*segL) pos -=N*segL;
+        while (pos < 0)pos += N*segL;
 
-        if (Keyboard:: isKeyPressed(Keyboard::Up)) pos+=200;
-        if (Keyboard::isKeyPressed(Keyboard::Down)) ps-=200;
         app.clear();
-
         int startPos = pos/segL;
+        int camH = 1500 + lines[startPos].y;
+        float x=0, dx=0;
+        int maxy = height;
 
         //
         for(int n=startPos; n<startPos+300; n++)
         {
             Line &1 = lines[n%N];
-            l.PROJECT(0, 1500, 0);
+            l.Project(playerX - x, camH, pos - (n>=N?N*segL:0));
+            x+=dx;
+            dx+=1.curve;
+
+            if (l.Y>=maxy) continue;
+            maxy = l.Y;
 
             Color grass = (n/3)%2?Color(16.200.16):Color(0,154,0);
             Color rumble =  (n/3)%2?Color(255.255.255):Color(0,0,0);
